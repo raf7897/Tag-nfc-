@@ -36,7 +36,7 @@
       box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
     }
 
-    /* ANIMAZIONE INTRO LOGO (ZOOM & FADE) */
+    /* ANIMAZIONE INTRO LOGO (SOLO PER IL CONFIGURATORE) */
     @keyframes logoZoomIntro {
       0% {
         transform: scale(0.3);
@@ -65,23 +65,23 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      transition: opacity 0.6s ease, visibility 0.6s ease;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
     }
 
     #splash-logo {
-      animation: logoZoomIntro 2.2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+      animation: logoZoomIntro 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
     }
   </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
 
-  <!-- SCHERMATA D'INTRODUZIONE ANIMATA -->
-  <div id="splash-screen">
+  <!-- SCHERMATA INTRO LOGO (INIZIALMENTE NASCOSTA) -->
+  <div id="splash-screen" class="hidden">
     <img id="splash-logo" src="https://i.postimg.cc/FzNcsbRK/1774642979070-(1).png" class="w-44 h-44 object-contain drop-shadow-2xl" alt="Logo Intro">
   </div>
 
   <!-- CONTENITORE PRINCIPALE -->
-  <div id="app" class="w-full max-w-md opacity-0 transition-opacity duration-700"></div>
+  <div id="app" class="w-full max-w-md"></div>
 
   <script>
     const LOGO_URL = "https://i.postimg.cc/FzNcsbRK/1774642979070-(1).png";
@@ -106,21 +106,6 @@
     let activeColorTarget = 'bg';
     let currentMode = 'card';
     let uploadedImageBase64 = "";
-
-    // GESTIONE INTRO ANIMATA
-    window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-        const splash = document.getElementById('splash-screen');
-        const app = document.getElementById('app');
-        if (splash) {
-          splash.style.opacity = '0';
-          splash.style.visibility = 'hidden';
-        }
-        if (app) {
-          app.classList.remove('opacity-0');
-        }
-      }, 2000); // Durata intro: 2 secondi
-    });
 
     // HELPER ENCODING BASE64 (UTF-8 SAFE)
     function utf8_to_b64(str) {
@@ -176,20 +161,42 @@
     const mode = urlParams.get('mode');
     const dataEncoded = urlParams.get('data');
 
-    // ROUTING VISTE
+    // ROUTING VISTE (PAGINA GENERATA VS CONFIGURATORE)
     if (mode && dataEncoded) {
+      // APERTURA LINK GENERATO: VAI DIRETTO SENZA INTRO ANIMATA
       try {
         const config = JSON.parse(b64_to_utf8(dataEncoded));
         renderPublicView(mode, config);
       } catch (e) {
         console.error("Errore decodifica dati URL:", e);
-        renderConfigurator();
+        startConfiguratorWithSplash();
       }
     } else {
-      renderConfigurator();
+      // APERTURA CONFIGURATORE: APPLICA INTRO CON LOGO ANIMATO
+      startConfiguratorWithSplash();
     }
 
-    // --- VISTA PUBBLICA ---
+    function startConfiguratorWithSplash() {
+      const splash = document.getElementById('splash-screen');
+      const app = document.getElementById('app');
+      
+      if (splash && app) {
+        splash.classList.remove('hidden');
+        app.classList.add('opacity-0');
+        renderConfigurator();
+
+        setTimeout(() => {
+          splash.style.opacity = '0';
+          splash.style.visibility = 'hidden';
+          app.classList.remove('opacity-0');
+          app.classList.add('transition-opacity', 'duration-500');
+        }, 1800);
+      } else {
+        renderConfigurator();
+      }
+    }
+
+    // --- VISTA PUBBLICA (DIRETTA SENZA ATTESA) ---
     function renderPublicView(mode, config) {
       const app = document.getElementById('app');
 
@@ -337,7 +344,7 @@
       app.innerHTML = `
         <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl border border-slate-700">
           
-          <!-- LOGO INGRANDITO E TITOLO COMPATTO -->
+          <!-- LOGO E TITOLO COMPATTO -->
           <div class="flex items-center gap-3 mb-6">
             <img src="${LOGO_URL}" class="w-32 h-32 sm:w-36 sm:h-36 object-contain shrink-0 drop-shadow-xl" alt="Logo">
             <div class="min-w-0 flex-1">
@@ -388,7 +395,6 @@
           <div id="colorSection" class="pt-4 border-t border-slate-700 mt-4">
             <label class="block text-xs font-bold text-slate-300 mb-2">🎨 SELEZIONA DESTINAZIONE COLORE</label>
             
-            <!-- SELEZIONE TARGET -->
             <div class="grid grid-cols-3 gap-2 mb-3">
               <button type="button" onclick="setTarget('bg')" id="target-bg" class="py-2 px-1 text-[11px] font-bold rounded-xl border border-slate-700 bg-blue-600/30 border-blue-500 text-blue-300 flex flex-col items-center gap-1">
                 <span>Sfondo</span>
@@ -408,7 +414,6 @@
 
             <div id="colorDotsContainer" class="flex flex-wrap gap-3 justify-center bg-slate-900 p-3 rounded-xl border border-slate-700 mb-3"></div>
 
-            <!-- PULSANTE SELETTORE COLORE PERSONALIZZATO -->
             <div class="text-center">
               <input type="color" id="customColorPicker" onchange="handleCustomColorChoice(event)" class="hidden">
               <button type="button" onclick="document.getElementById('customColorPicker').click()" class="w-full py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:opacity-90 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-md active:scale-95">
