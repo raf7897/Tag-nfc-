@@ -36,24 +36,11 @@
       box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
     }
 
-    /* ANIMAZIONE INTRO LOGO (SOLO PER IL CONFIGURATORE) */
     @keyframes logoZoomIntro {
-      0% {
-        transform: scale(0.3);
-        opacity: 0;
-      }
-      50% {
-        transform: scale(1.15);
-        opacity: 1;
-      }
-      80% {
-        transform: scale(1);
-        opacity: 1;
-      }
-      100% {
-        transform: scale(1.6);
-        opacity: 0;
-      }
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.15); opacity: 1; }
+      80% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.6); opacity: 0; }
     }
 
     #splash-screen {
@@ -75,7 +62,7 @@
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
 
-  <!-- SCHERMATA INTRO LOGO (INIZIALMENTE NASCOSTA) -->
+  <!-- SCHERMATA INTRO LOGO (SOLO CONFIGURATORE) -->
   <div id="splash-screen" class="hidden">
     <img id="splash-logo" src="https://i.postimg.cc/FzNcsbRK/1774642979070-(1).png" class="w-44 h-44 object-contain drop-shadow-2xl" alt="Logo Intro">
   </div>
@@ -86,7 +73,6 @@
   <script>
     const LOGO_URL = "https://i.postimg.cc/FzNcsbRK/1774642979070-(1).png";
 
-    // PALETTE COLORI PREDEFINITI
     let ALLOWED_COLORS = [
       { name: 'Beige', hex: '#f5f5dc' },
       { name: 'Blu', hex: '#1e3a8a' },
@@ -98,16 +84,15 @@
     ];
 
     let colorAssignments = {
-      bg: '#f5f5dc',      // Default Sfondo: Beige
-      accent: '#ffffff',  // Default Pulsanti: Bianco
-      text: '#0f172a'     // Default Testo: Scuro
+      bg: '#f5f5dc',
+      accent: '#ffffff',
+      text: '#0f172a'
     };
 
     let activeColorTarget = 'bg';
     let currentMode = 'card';
     let uploadedImageBase64 = "";
 
-    // HELPER ENCODING BASE64 (UTF-8 SAFE)
     function utf8_to_b64(str) {
       return window.btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, function(match, p1) {
         return String.fromCharCode('0x' + p1);
@@ -120,7 +105,6 @@
       }).join(''));
     }
 
-    // RIDIMENSIONA IMMAGINE PER NFC (< 50KB)
     function processAndResizeImage(file, callback) {
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -156,12 +140,10 @@
       reader.readAsDataURL(file);
     }
 
-    // CONTROLLO PARAMETRI URL ALL'AVVIO
     const urlParams = new URLSearchParams(window.location.search);
     const mode = urlParams.get('mode');
     const dataEncoded = urlParams.get('data');
 
-    // SE È UN LINK GENERATO: APRI SUBITO SENZA LOGO ANIMATO
     if (mode && dataEncoded) {
       try {
         const config = JSON.parse(b64_to_utf8(dataEncoded));
@@ -171,7 +153,6 @@
         startConfiguratorWithSplash();
       }
     } else {
-      // SE È LA PAGINA PRINCIPALE: MOSTRA L'ANIMAZIONE DEL LOGO
       startConfiguratorWithSplash();
     }
 
@@ -270,7 +251,6 @@
         return;
       }
 
-      // BIGLIETTO DA VISITA
       if (mode === 'card') {
         let socialLinksHTML = '';
         if (config.instagram) socialLinksHTML += createSocialBtn(`https://instagram.com/${config.instagram.replace('@','')}`, 'fab fa-instagram', 'Instagram', accentColor, textColor);
@@ -343,7 +323,6 @@
       app.innerHTML = `
         <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl border border-slate-700">
           
-          <!-- LOGO E TITOLO COMPATTO -->
           <div class="flex items-center gap-3 mb-6">
             <img src="${LOGO_URL}" class="w-32 h-32 sm:w-36 sm:h-36 object-contain shrink-0 drop-shadow-xl" alt="Logo">
             <div class="min-w-0 flex-1">
@@ -354,7 +333,6 @@
 
           <label class="block text-xs font-bold text-slate-300 mb-2">SELEZIONA AZIONE</label>
           
-          <!-- SELEZIONE AZIONI MODERNE -->
           <div class="grid grid-cols-2 gap-2.5 mb-5">
             <button type="button" onclick="selectAction('card')" id="btn-card" class="action-card p-3 rounded-2xl bg-slate-900/60 text-left flex items-center gap-3 active:scale-95">
               <div class="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm shrink-0"><i class="fas fa-address-card"></i></div>
@@ -387,10 +365,9 @@
             </button>
           </div>
 
-          <!-- FORM DYNAMIC FIELDS -->
           <div id="formFields" class="space-y-3"></div>
 
-          <!-- SEZIONE ASSEGNAZIONE COLORI (VISIBILE SOLO PER BIGLIETTO DA VISITA) -->
+          <!-- SEZIONE COLORI SOLO PER BIGLIETTO DA VISITA -->
           <div id="colorSection" class="pt-4 border-t border-slate-700 mt-4">
             <label class="block text-xs font-bold text-slate-300 mb-2">🎨 SELEZIONA DESTINAZIONE COLORE</label>
             
@@ -439,12 +416,10 @@
               </button>
             </div>
 
-            <!-- TASTO SCRITTURA DIRETTA NFC -->
             <button onclick="writeToNfcTag()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 active:scale-95">
-              <i class="fas fa-wifi text-lg"></i> Scrivi su Tag NFC
+              <i class="fas fa-wifi text-lg"></i> CANCELLA E SCRIVI SU TAG NFC
             </button>
             
-            <!-- RIQUADRO FEEDBACK SCRITTURA NFC -->
             <div id="nfcStatusBox" class="hidden mt-3 p-3.5 rounded-xl text-xs font-semibold text-center border transition-all"></div>
           </div>
         </div>
@@ -497,7 +472,6 @@
       const activeBtn = document.getElementById(`btn-${modeKey}`);
       if (activeBtn) activeBtn.classList.add('selected');
 
-      // MOSTRA/NASCONDI SEZIONE COLORI IN BASE ALLA SELEZIONE
       const colorSec = document.getElementById('colorSection');
       if (colorSec) {
         if (modeKey === 'card') {
@@ -658,7 +632,7 @@
       if (url) window.open(url, '_blank');
     }
 
-    // INTERAZIONE E FEEDBACK VISIVO SCRITTURA NFC (WEB NFC API)
+    // SOVRASCRITTURA / CANCELLAZIONE DIRETTA TAG NFC (WEB NFC API)
     async function writeToNfcTag() {
       const box = document.getElementById('nfcStatusBox');
       const urlToWrite = document.getElementById('generatedUrl').value;
@@ -673,23 +647,30 @@
       if ('NDEFReader' in window) {
         try {
           box.className = "mt-3 p-3.5 rounded-xl text-xs font-semibold text-center border bg-amber-500/20 border-amber-500 text-amber-300 animate-pulse";
-          box.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Avvicina ora il Tag NFC al retro del telefono...`;
+          box.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i> Avvicina ORA il Tag NFC per cancellare i vecchi dati e sovrascrivere...`;
 
           const ndef = new NDEFReader();
+          
+          // FORZA LA SOVRASCRITTURA DEL TAG ESISTENTE
           await ndef.write({
             records: [{ recordType: "url", data: urlToWrite }]
-          });
+          }, { overwrite: true });
 
           box.className = "mt-3 p-3.5 rounded-xl text-xs font-bold text-center border bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-lg";
-          box.innerHTML = `<i class="fas fa-check-circle text-base mr-1.5"></i> SCRITTURA COMPLETATA CON SUCCESSO!<br><span class="text-[10px] font-normal opacity-90">Il tuo Tag NFC è pronto all'uso.</span>`;
+          box.innerHTML = `<i class="fas fa-check-circle text-base mr-1.5"></i> VECCHI DATI CANCELLATI E NUOVO TAG SCRITTO CON SUCCESSO!`;
         } catch (error) {
           console.error("Errore scrittura NFC:", error);
           box.className = "mt-3 p-3.5 rounded-xl text-xs font-semibold text-center border bg-red-500/20 border-red-500 text-red-300";
-          box.innerHTML = `<i class="fas fa-exclamation-triangle mr-1.5"></i> Errore durante la scrittura: ${error.message}`;
+          
+          if (error.name === 'NotAllowedError') {
+            box.innerHTML = `<i class="fas fa-exclamation-circle mr-1.5"></i> Permesso NFC negato nel browser.<br><span class="text-[10px]">Abilita i permessi NFC per Chrome nelle impostazioni del telefono.</span>`;
+          } else {
+            box.innerHTML = `<i class="fas fa-exclamation-triangle mr-1.5"></i> Tag protetto o bloccato da un'altra app.<br><span class="text-[10px] font-normal opacity-90">Sbloccalo prima con l'app <b>NFC Tools</b> (Cancella Tag) o riprova. Errore: ${error.message}</span>`;
+          }
         }
       } else {
         box.className = "mt-3 p-3.5 rounded-xl text-xs font-semibold text-center border bg-amber-500/20 border-amber-500 text-amber-300";
-        box.innerHTML = `<i class="fas fa-info-circle mr-1.5"></i> Web NFC non supportato su questo browser.<br><span class="text-[10px] font-normal opacity-90">Usa Chrome su Android oppure copia il link e usa l'app <b>NFC Tools</b> per scriverlo.</span>`;
+        box.innerHTML = `<i class="fas fa-info-circle mr-1.5"></i> La scrittura da browser web è supportata solo da <b>Chrome su Android</b>.<br><span class="text-[10px] font-normal opacity-90">Se sei su iPhone o altro browser: copia il link generato in alto e incollalo nell'app <b>NFC Tools</b> (Sezione Scrivi -> Aggiungi un record -> URL).</span>`;
       }
     }
   </script>
