@@ -28,9 +28,46 @@
       transform: scale(1.15);
       box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
     }
+    .action-card {
+      transition: all 0.2s ease;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .action-card.selected {
+      border-color: #3b82f6;
+      background-color: rgba(59, 130, 246, 0.2);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+    }
+
+    @keyframes logoZoomIntro {
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.15); opacity: 1; }
+      80% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+
+    #splash-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background-color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+
+    #splash-logo {
+      animation: logoZoomIntro 2s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
   </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+  <!-- SCHERMATA INTRO LOGO -->
+  <div id="splash-screen" class="hidden">
+    <img id="splash-logo" src="https://i.postimg.cc/FzNcsbRK/1774642979070-(1).png" class="w-44 h-44 object-contain drop-shadow-2xl" alt="Logo Intro">
+  </div>
 
   <!-- CONTENITORE PRINCIPALE -->
   <div id="app" class="w-full max-w-md">
@@ -60,19 +97,16 @@
 
     let colorAssignments = { bg: '#f5f5dc', accent: '#ffffff', text: '#0f172a' };
     let activeColorTarget = 'bg';
+    let currentMode = 'card';
     let uploadedImageBase64 = "";
 
     // PARAMETRI URL
     const urlParams = new URLSearchParams(window.location.search);
-    const tagId = urlParams.get('id');
+    const tagId = urlParams.get('id') || 'default-tag';
 
     // AVVIO
     window.addEventListener('DOMContentLoaded', async () => {
-      if (!tagId) {
-        renderWriteInstructions();
-      } else {
-        await loadTagFromDatabase(tagId);
-      }
+      await loadTagFromDatabase(tagId);
     });
 
     async function loadTagFromDatabase(id) {
@@ -89,150 +123,98 @@
         }
 
         if (!data) {
-          // TAG NUOVO NON ANCORA CONFIGURATO
-          renderFirstSetup(id);
+          // TAG NON ANCORA REGISTRATO: MOSTRA CONFIGURATORE SEMPLICE
+          startConfiguratorWithSplash(id);
         } else {
-          // TAG ESISTENTE: MOSTRA LA SCHEDA DIGITALE
+          // TAG GIÀ CONFIGURATO: MOSTRA DIRECTLY LA SCHEDA PUBBLICA
           renderPublicCard(data);
         }
       } catch (err) {
         console.error("Errore caricamento:", err);
-        app.innerHTML = `<div class="bg-slate-800 p-6 rounded-3xl text-center border border-slate-700">
-          <i class="fas fa-exclamation-triangle text-red-400 text-3xl mb-2"></i>
-          <p class="text-sm">Errore di connessione al database.</p>
-        </div>`;
+        startConfiguratorWithSplash(id);
       }
     }
 
-    // --- ISTRUZIONI DI SCRITTURA PRIMO TAG (SE APERTO SENZA ID) ---
-    function renderWriteInstructions() {
+    function startConfiguratorWithSplash(id) {
+      const splash = document.getElementById('splash-screen');
       const app = document.getElementById('app');
-      const sampleId = 'card-001';
-      const sampleUrl = `${window.location.origin}${window.location.pathname}?id=${sampleId}`;
+      
+      if (splash && app) {
+        splash.classList.remove('hidden');
+        app.classList.add('opacity-0');
+        renderConfiguratorForm(id, null, null);
 
-      app.innerHTML = `
-        <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl border border-slate-700">
-          <img src="${LOGO_URL}" class="w-28 h-28 object-contain mx-auto mb-3 drop-shadow-xl" alt="Logo">
-          <h1 class="text-lg font-bold text-white text-center mb-1">Programma un nuovo Tag NFC</h1>
-          <p class="text-xs text-slate-400 text-center mb-5">Scrivi il link sul Tag fisico usando l'app <b>NFC Tools</b>. Il Tag non dovrà più essere riscritto in futuro!</p>
-
-          <div class="bg-slate-900 p-4 rounded-2xl border border-slate-700 mb-5">
-            <label class="block text-[11px] font-bold text-blue-400 mb-1">LINK DA SCRIVERE SUL TAG FISICO:</label>
-            <input type="text" id="nfcUrlToCopy" value="${sampleUrl}" readonly class="w-full bg-slate-800 text-slate-200 text-xs p-2.5 rounded-xl border border-slate-700 font-mono mb-3">
-            
-            <button onclick="copyNfcUrl()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 font-bold text-white rounded-xl transition text-xs flex items-center justify-center gap-2">
-              <i class="fas fa-copy"></i> Copia Link per NFC Tools
-            </button>
-          </div>
-
-          <div class="space-y-2 text-xs text-slate-300 bg-slate-900/50 p-4 rounded-2xl border border-slate-700/50 mb-5">
-            <p class="font-bold text-white mb-1"><i class="fas fa-mobile-alt text-emerald-400 mr-1.5"></i> Come fare con NFC Tools:</p>
-            <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-400">
-              <li>Apri l'app <b>NFC Tools</b> sul telefono.</li>
-              <li>Scegli <b>Scrivi</b> $\rightarrow$ <b>Aggiungi un record</b> $\rightarrow$ <b>URL</b>.</li>
-              <li>Incolla il link copiato sopra e premi <b>Scrivi</b>.</li>
-              <li>Avvicina il Tag NFC fisico per salvarlo!</li>
-            </ol>
-          </div>
-
-          <button onclick="window.location.href='${sampleUrl}'" class="w-full py-3 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 font-bold rounded-xl border border-emerald-500/30 transition text-xs flex items-center justify-center gap-2">
-            <i class="fas fa-external-link-alt"></i> Simula Scansione Tag (ID: ${sampleId})
-          </button>
-        </div>`;
-    }
-
-    function copyNfcUrl() {
-      const copyText = document.getElementById("nfcUrlToCopy");
-      copyText.select();
-      copyText.setSelectionRange(0, 99999);
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(copyText.value).then(() => {
-          alert("Link copiato negli appunti! Ora incollalo in NFC Tools.");
-        });
+        setTimeout(() => {
+          splash.style.opacity = '0';
+          splash.style.visibility = 'hidden';
+          app.classList.remove('opacity-0');
+          app.classList.add('transition-opacity', 'duration-500');
+        }, 1800);
       } else {
-        document.execCommand("copy");
-        alert("Link copiato negli appunti! Ora incollalo in NFC Tools.");
+        renderConfiguratorForm(id, null, null);
       }
     }
 
-    // --- PRIMA CONFIGURAZIONE DA PARTE DELL'UTENTE ---
-    function renderFirstSetup(id) {
-      const app = document.getElementById('app');
-      app.innerHTML = `
-        <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl border border-slate-700">
-          <div class="text-center mb-6">
-            <div class="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center mx-auto mb-3 text-xl"><i class="fas fa-key"></i></div>
-            <h2 class="text-lg font-bold text-white">Attiva il tuo Tag NFC</h2>
-            <p class="text-xs text-slate-400 mt-1">Tag ID: <span class="text-blue-400 font-mono">${id}</span></p>
-          </div>
-
-          <p class="text-xs text-slate-300 mb-4">Crea un **PIN di 4 cifre** per proteggere la modifica della tua pagina in futuro:</p>
-          
-          <input type="password" id="setupPin" maxlength="4" placeholder="Scegli un PIN a 4 cifre (es. 1234)" class="w-full p-3.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-center tracking-widest text-white mb-4 focus:outline-none focus:border-blue-500">
-          
-          <button onclick="startConfiguration('${id}')" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 font-bold text-white rounded-xl shadow-lg transition active:scale-95 text-xs">
-            Crea la mia Pagina
-          </button>
-        </div>`;
-    }
-
-    function startConfiguration(id) {
-      const pin = document.getElementById('setupPin').value;
-      if (!pin || pin.length < 4) {
-        alert("Inserisci un PIN valido di 4 cifre!");
-        return;
-      }
-      renderConfiguratorForm(id, pin, null);
-    }
-
-    // --- FORM DI CONFIGURAZIONE / MODIFICA ---
+    // --- CONFIGURATORE FACILE ---
     function renderConfiguratorForm(id, pin, existingData) {
       const app = document.getElementById('app');
 
       if (existingData) {
         if (existingData.colorAssignments) colorAssignments = existingData.colorAssignments;
         if (existingData.avatarUrl) uploadedImageBase64 = existingData.avatarUrl;
+        if (existingData.mode) currentMode = existingData.mode;
       }
 
       app.innerHTML = `
         <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl border border-slate-700">
+          
           <div class="flex items-center gap-3 mb-6">
-            <img src="${LOGO_URL}" class="w-24 h-24 object-contain shrink-0 drop-shadow-xl" alt="Logo">
+            <img src="${LOGO_URL}" class="w-28 h-28 object-contain shrink-0 drop-shadow-xl" alt="Logo">
             <div class="min-w-0 flex-1">
-              <h1 class="text-lg font-bold text-white tracking-tight">Personalizza Profilo</h1>
-              <p class="text-xs text-slate-400">Tag ID: ${id}</p>
+              <h1 class="text-xl font-bold text-white tracking-tight">Configura Tag NFC</h1>
+              <p class="text-xs text-slate-400 mt-1">Personalizza la tua pagina digitale</p>
             </div>
           </div>
 
-          <div class="space-y-3 mb-5">
-            <input type="text" id="c_name" value="${existingData?.name || ''}" placeholder="Nome e Cognome" class="input-style">
-            <input type="text" id="c_title" value="${existingData?.title || ''}" placeholder="Ruolo / Professione" class="input-style">
-            <input type="tel" id="c_phone" value="${existingData?.phone || ''}" placeholder="Numero di Telefono" class="input-style">
-            <input type="email" id="c_email" value="${existingData?.email || ''}" placeholder="Email" class="input-style">
-            
-            <div class="pt-2 border-t border-slate-700">
-              <label class="block text-xs font-bold text-slate-300 mb-1">📷 FOTO PROFILO</label>
-              <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)" class="hidden">
-              <button type="button" onclick="document.getElementById('imageInput').click()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition">
-                <i class="fas fa-upload text-blue-400"></i> Seleziona Foto dal Telefono
-              </button>
-              <div id="imagePreviewContainer" class="${uploadedImageBase64 ? '' : 'hidden'} mt-2 text-center">
-                <img id="imagePreview" src="${uploadedImageBase64}" class="w-16 h-16 object-cover rounded-full mx-auto border-2 border-blue-500 shadow-md mb-1">
-                <p class="text-[10px] text-emerald-400 font-semibold">✓ Foto impostata</p>
-              </div>
-            </div>
+          <label class="block text-xs font-bold text-slate-300 mb-2">SELEZIONA AZIONE</label>
+          
+          <div class="grid grid-cols-2 gap-2.5 mb-5">
+            <button type="button" onclick="selectAction('card')" id="btn-card" class="action-card p-3 rounded-2xl bg-slate-900/60 text-left flex items-center gap-3 active:scale-95">
+              <div class="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-sm shrink-0"><i class="fas fa-address-card"></i></div>
+              <span class="text-xs font-semibold leading-tight text-slate-200">Biglietto da Visita</span>
+            </button>
 
-            <div class="pt-3 border-t border-slate-700 space-y-2">
-              <p class="text-xs text-slate-400 font-semibold mb-1">Social Network:</p>
-              <input type="text" id="c_insta" value="${existingData?.instagram || ''}" placeholder="Username Instagram" class="input-style">
-              <input type="text" id="c_tiktok" value="${existingData?.tiktok || ''}" placeholder="Username TikTok" class="input-style">
-              <input type="text" id="c_wa" value="${existingData?.whatsapp || ''}" placeholder="Numero WhatsApp (es. 393331234567)" class="input-style">
-              <input type="text" id="c_linkedin" value="${existingData?.linkedin || ''}" placeholder="Link o Username LinkedIn" class="input-style">
-            </div>
+            <button type="button" onclick="selectAction('redirect')" id="btn-redirect" class="action-card p-3 rounded-2xl bg-slate-900/60 text-left flex items-center gap-3 active:scale-95">
+              <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-sm shrink-0"><i class="fas fa-link"></i></div>
+              <span class="text-xs font-semibold leading-tight text-slate-200">Link Diretto</span>
+            </button>
+
+            <button type="button" onclick="selectAction('call')" id="btn-call" class="action-card p-3 rounded-2xl bg-slate-900/60 text-left flex items-center gap-3 active:scale-95">
+              <div class="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-sm shrink-0"><i class="fas fa-phone"></i></div>
+              <span class="text-xs font-semibold leading-tight text-slate-200">Contatto Telefonico</span>
+            </button>
+
+            <button type="button" onclick="selectAction('whatsapp')" id="btn-whatsapp" class="action-card p-3 rounded-2xl bg-slate-900/60 text-left flex items-center gap-3 active:scale-95">
+              <div class="w-8 h-8 rounded-xl bg-green-500/20 text-green-400 flex items-center justify-center text-sm shrink-0"><i class="fab fa-whatsapp"></i></div>
+              <span class="text-xs font-semibold leading-tight text-slate-200">Chat WhatsApp</span>
+            </button>
+
+            <button type="button" onclick="selectAction('photo')" id="btn-photo" class="action-card p-3 rounded-2xl bg-slate-900/60 text-left flex items-center gap-3 active:scale-95">
+              <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm shrink-0"><i class="fas fa-image"></i></div>
+              <span class="text-xs font-semibold leading-tight text-slate-200">Immagine / Foto</span>
+            </button>
+
+            <button type="button" onclick="selectAction('pdf')" id="btn-pdf" class="action-card p-3 rounded-2xl bg-slate-900/60 text-left flex items-center justify-center gap-3 active:scale-95">
+              <div class="w-8 h-8 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center text-sm shrink-0"><i class="fas fa-file-pdf"></i></div>
+              <span class="text-xs font-semibold leading-tight text-slate-200">File PDF</span>
+            </button>
           </div>
 
-          <!-- SEZIONE COLORI -->
-          <div class="pt-4 border-t border-slate-700 mb-5">
+          <!-- FORM CAMPI DINAMICI -->
+          <div id="formFields" class="space-y-3 mb-5"></div>
+
+          <!-- SEZIONE COLORI (SOLO PER BIGLIETTO DA VISITA) -->
+          <div id="colorSection" class="pt-4 border-t border-slate-700 mb-5">
             <label class="block text-xs font-bold text-slate-300 mb-2">🎨 PERSONALIZZA COLORI</label>
             <div class="grid grid-cols-3 gap-2 mb-3">
               <button type="button" onclick="setTarget('bg')" id="target-bg" class="py-2 px-1 text-[11px] font-bold rounded-xl border border-blue-500 bg-blue-600/30 text-blue-300 flex flex-col items-center gap-1">
@@ -257,8 +239,15 @@
             </button>
           </div>
 
-          <button onclick="saveTagToDatabase('${id}', '${pin}')" id="btnSave" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 font-bold text-white rounded-xl shadow-lg transition active:scale-95 text-xs mb-3">
-            Salva Profilo online
+          <!-- PIN DI SICUREZZA PER MODIFICHE FUTURE -->
+          <div class="pt-4 border-t border-slate-700 mb-5">
+            <label class="block text-xs font-bold text-slate-300 mb-1">🔑 PIN DI SICUREZZA (4 Cifre)</label>
+            <p class="text-[10px] text-slate-400 mb-2">Ti servirà per modificare la pagina in futuro</p>
+            <input type="password" id="userPin" maxlength="4" value="${pin || ''}" placeholder="Inserisci un PIN a 4 cifre (es. 1234)" class="w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-center tracking-widest text-white focus:outline-none focus:border-blue-500">
+          </div>
+
+          <button onclick="saveTagToDatabase('${id}')" id="btnSave" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 font-bold text-white rounded-xl shadow-lg transition active:scale-95 text-xs mb-3">
+            <i class="fas fa-save mr-1.5"></i> Salva Profilo e Attiva Tag
           </button>
 
           ${existingData ? `
@@ -268,30 +257,113 @@
           ` : ''}
         </div>`;
 
-      document.querySelectorAll('.input-style').forEach(el => {
-        el.className = "w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition";
-      });
-
+      selectAction(currentMode);
       renderColorDots();
     }
 
-    // SALVA NEL DATABASE (UPSERT)
-    async function saveTagToDatabase(id, pin) {
+    function selectAction(modeKey) {
+      currentMode = modeKey;
+      document.querySelectorAll('.action-card').forEach(btn => btn.classList.remove('selected'));
+      const activeBtn = document.getElementById(`btn-${modeKey}`);
+      if (activeBtn) activeBtn.classList.add('selected');
+
+      const colorSec = document.getElementById('colorSection');
+      if (colorSec) {
+        if (modeKey === 'card') {
+          colorSec.classList.remove('hidden');
+        } else {
+          colorSec.classList.add('hidden');
+        }
+      }
+
+      toggleFields();
+    }
+
+    function toggleFields() {
+      const type = currentMode;
+      const container = document.getElementById('formFields');
+      if (!container) return;
+
+      if (type === 'card') {
+        container.innerHTML = `
+          <input type="text" id="c_name" placeholder="Nome e Cognome" class="input-style">
+          <input type="text" id="c_title" placeholder="Ruolo / Professione" class="input-style">
+          <input type="tel" id="c_phone" placeholder="Numero di Telefono" class="input-style">
+          <input type="email" id="c_email" placeholder="Email" class="input-style">
+          
+          <div class="pt-2 border-t border-slate-700">
+            <label class="block text-xs font-bold text-slate-300 mb-1">📷 FOTO PROFILO</label>
+            <input type="file" id="imageInput" accept="image/*" onchange="handleImageUpload(event)" class="hidden">
+            <button type="button" onclick="document.getElementById('imageInput').click()" class="w-full py-2.5 bg-slate-900 hover:bg-slate-700 text-slate-300 rounded-xl border border-slate-700 text-xs font-bold flex items-center justify-center gap-2 transition">
+              <i class="fas fa-upload text-blue-400"></i> Seleziona Foto dal Telefono
+            </button>
+            <div id="imagePreviewContainer" class="${uploadedImageBase64 ? '' : 'hidden'} mt-2 text-center">
+              <img id="imagePreview" src="${uploadedImageBase64}" class="w-16 h-16 object-cover rounded-full mx-auto border-2 border-blue-500 shadow-md mb-1">
+              <p class="text-[10px] text-emerald-400 font-semibold">✓ Foto caricata</p>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-700 space-y-2">
+            <p class="text-xs text-slate-400 font-semibold mb-1">Social Network:</p>
+            <input type="text" id="c_insta" placeholder="Username Instagram" class="input-style">
+            <input type="text" id="c_tiktok" placeholder="Username TikTok" class="input-style">
+            <input type="text" id="c_wa" placeholder="Numero WhatsApp (es. 393331234567)" class="input-style">
+            <input type="text" id="c_linkedin" placeholder="Link o Username LinkedIn" class="input-style">
+          </div>
+        `;
+      } else if (type === 'redirect') {
+        container.innerHTML = `<input type="url" id="r_url" placeholder="Incolla il link (https://...)" class="input-style">`;
+      } else if (type === 'call') {
+        container.innerHTML = `<input type="tel" id="p_phone" placeholder="Numero di telefono da chiamare" class="input-style">`;
+      } else if (type === 'whatsapp') {
+        container.innerHTML = `
+          <input type="tel" id="wa_num" placeholder="Numero WhatsApp (es. 393331234567)" class="input-style">
+          <textarea id="wa_msg" placeholder="Messaggio preimpostato (opzionale)" class="input-style h-20 resize-none"></textarea>
+        `;
+      } else if (type === 'photo') {
+        container.innerHTML = `<input type="url" id="img_url" placeholder="Link immagine (http://...)" class="input-style">`;
+      } else if (type === 'pdf') {
+        container.innerHTML = `
+          <input type="text" id="pdf_title" placeholder="Titolo Documento" class="input-style">
+          <input type="url" id="pdf_url" placeholder="Link al file PDF (Drive, Dropbox, ecc.)" class="input-style">
+        `;
+      }
+
+      document.querySelectorAll('.input-style').forEach(el => {
+        el.className = "w-full p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition";
+      });
+    }
+
+    // SALVA NEL DATABASE
+    async function saveTagToDatabase(id) {
+      const pin = document.getElementById('userPin')?.value;
+      if (!pin || pin.length < 4) {
+        alert("Inserisci un PIN di sicurezza di 4 cifre per proteggere la pagina!");
+        return;
+      }
+
       const btnSave = document.getElementById('btnSave');
       btnSave.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-1"></i> Salvataggio in corso...`;
       btnSave.disabled = true;
 
       const payload = {
+        mode: currentMode,
+        colorAssignments: colorAssignments,
         name: document.getElementById('c_name')?.value || '',
         title: document.getElementById('c_title')?.value || '',
-        phone: document.getElementById('c_phone')?.value || '',
+        phone: document.getElementById('c_phone')?.value || document.getElementById('p_phone')?.value || '',
         email: document.getElementById('c_email')?.value || '',
         avatarUrl: uploadedImageBase64,
         instagram: document.getElementById('c_insta')?.value || '',
         tiktok: document.getElementById('c_tiktok')?.value || '',
         whatsapp: document.getElementById('c_wa')?.value || '',
         linkedin: document.getElementById('c_linkedin')?.value || '',
-        colorAssignments: colorAssignments
+        url: document.getElementById('r_url')?.value || '',
+        waNum: document.getElementById('wa_num')?.value || '',
+        waMsg: document.getElementById('wa_msg')?.value || '',
+        photoUrl: document.getElementById('img_url')?.value || '',
+        pdfTitle: document.getElementById('pdf_title')?.value || '',
+        pdfUrl: document.getElementById('pdf_url')?.value || ''
       };
 
       try {
@@ -301,21 +373,21 @@
 
         if (error) {
           alert("Errore salvataggio: " + error.message);
-          btnSave.innerHTML = "Salva Profilo online";
+          btnSave.innerHTML = `<i class="fas fa-save mr-1.5"></i> Salva Profilo e Attiva Tag`;
           btnSave.disabled = false;
         } else {
           await loadTagFromDatabase(id);
         }
       } catch (err) {
         alert("Errore salvataggio: " + err.message);
-        btnSave.innerHTML = "Salva Profilo online";
+        btnSave.innerHTML = `<i class="fas fa-save mr-1.5"></i> Salva Profilo e Attiva Tag`;
         btnSave.disabled = false;
       }
     }
 
     // RESET DEL TAG NEL DATABASE
     async function resetTagInDatabase(id) {
-      const confirmReset = confirm("Sei sicuro di voler resettare questo Tag?\nTutti i dati inseriti verranno cancellati e il Tag tornerà allo stato di prima configurazione.");
+      const confirmReset = confirm("Sei sicuro di voler resettare questo Tag?\nTutti i dati inseriti verranno cancellati e il Tag tornerà allo stato iniziale.");
       if (!confirmReset) return;
 
       const btnReset = document.getElementById('btnReset');
@@ -339,7 +411,7 @@
         } else {
           uploadedImageBase64 = "";
           colorAssignments = { bg: '#f5f5dc', accent: '#ffffff', text: '#0f172a' };
-          renderFirstSetup(id);
+          renderConfiguratorForm(id, null, null);
         }
       } catch (err) {
         alert("Errore durante il reset: " + err.message);
@@ -354,6 +426,7 @@
     function renderPublicCard(tagRecord) {
       const app = document.getElementById('app');
       const config = tagRecord.data || {};
+      const mode = config.mode || 'card';
 
       const bgColor = config.colorAssignments?.bg || '#f5f5dc';
       const accentColor = config.colorAssignments?.accent || '#ffffff';
@@ -361,6 +434,65 @@
 
       document.body.style.backgroundColor = bgColor;
 
+      if (mode === 'redirect') {
+        let dest = config.url || '';
+        if (dest && !dest.startsWith('http://') && !dest.startsWith('https://')) dest = 'https://' + dest;
+        if (dest) window.location.href = dest;
+        app.innerHTML = `<div class="bg-slate-800 p-8 rounded-3xl shadow-2xl text-center border border-slate-700 text-white">
+          <i class="fas fa-spinner fa-spin text-4xl text-blue-400 mb-4"></i>
+          <p class="text-base font-semibold">Reindirizzamento in corso...</p>
+        </div>`;
+        return;
+      }
+
+      if (mode === 'call') {
+        const phone = config.phone || '';
+        if (phone) window.location.href = 'tel:' + phone;
+        app.innerHTML = `<div class="bg-slate-800 p-8 rounded-3xl shadow-2xl text-center border border-slate-700 text-white">
+          <i class="fas fa-phone text-4xl text-green-400 mb-4"></i>
+          <p class="text-base font-semibold">Avvio chiamata a ${phone}...</p>
+        </div>`;
+        return;
+      }
+
+      if (mode === 'whatsapp') {
+        const num = (config.waNum || '').replace(/[^0-9]/g, '');
+        const msg = encodeURIComponent(config.waMsg || '');
+        window.location.href = `https://wa.me/${num}${msg ? '?text=' + msg : ''}`;
+        app.innerHTML = `<div class="bg-slate-800 p-8 rounded-3xl shadow-2xl text-center border border-slate-700 text-white">
+          <i class="fab fa-whatsapp text-4xl text-green-500 mb-4"></i>
+          <p class="text-base font-semibold">Apertura Chat WhatsApp...</p>
+        </div>`;
+        return;
+      }
+
+      if (mode === 'photo') {
+        app.innerHTML = `
+          <div class="bg-slate-800 p-5 rounded-3xl shadow-2xl text-center border border-slate-700 text-white">
+            <img src="${config.photoUrl}" class="w-full rounded-2xl mb-4 object-cover max-h-[70vh]" alt="Foto">
+            <button onclick="promptForEdit('${tagRecord.tag_id}', '${tagRecord.pin}')" class="text-xs text-slate-400 hover:text-white transition mt-2">Modifica Pagina</button>
+          </div>`;
+        return;
+      }
+
+      if (mode === 'pdf') {
+        let pdfDest = config.pdfUrl || '#';
+        if (pdfDest !== '#' && !pdfDest.startsWith('http://') && !pdfDest.startsWith('https://')) pdfDest = 'https://' + pdfDest;
+        app.innerHTML = `
+          <div class="bg-slate-800 p-6 rounded-3xl shadow-2xl text-center border border-slate-700 text-white">
+            <div class="w-16 h-16 bg-red-500/20 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">
+              <i class="fas fa-file-pdf"></i>
+            </div>
+            <h2 class="text-xl font-bold mb-4">${config.pdfTitle || 'Documento PDF'}</h2>
+            <a href="${pdfDest}" target="_blank" rel="noopener noreferrer" class="block w-full py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl shadow-lg transition mb-4">
+              <i class="fas fa-download mr-2"></i> Apri / Scarica PDF
+            </a>
+            <button onclick="promptForEdit('${tagRecord.tag_id}', '${tagRecord.pin}')" class="text-xs text-slate-400 hover:text-white transition">Modifica Pagina</button>
+          </div>`;
+        return;
+      }
+
+      // BIGLIETTO DA VISITA
       let socialLinksHTML = '';
       if (config.instagram) socialLinksHTML += createSocialBtn(`https://instagram.com/${config.instagram.replace('@','')}`, 'fab fa-instagram', 'Instagram', accentColor, textColor);
       if (config.tiktok) socialLinksHTML += createSocialBtn(`https://tiktok.com/@${config.tiktok.replace('@','')}`, 'fab fa-tiktok', 'TikTok', accentColor, textColor);
@@ -394,9 +526,9 @@
           </button>
 
           <div class="mt-6 pt-4 border-t border-slate-900/10 flex items-center justify-between opacity-60 hover:opacity-100 transition text-xs font-semibold">
-            <span>ID: ${tagRecord.tag_id}</span>
+            <span>Tag ID: ${tagRecord.tag_id}</span>
             <button onclick="promptForEdit('${tagRecord.tag_id}', '${tagRecord.pin}')" class="hover:underline flex items-center gap-1">
-              <i class="fas fa-lock"></i> Modifica la mia Pagina
+              <i class="fas fa-lock"></i> Modifica Pagina
             </button>
           </div>
         </div>
